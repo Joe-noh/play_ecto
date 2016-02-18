@@ -5,7 +5,7 @@ defmodule PlayEcto do
     import Supervisor.Spec, warn: false
 
     children = [
-      worker(PlayEcto.Repo, [])
+      supervisor(PlayEcto.Repo, [])
     ]
 
     opts = [strategy: :one_for_one, name: PlayEcto.Supervisor]

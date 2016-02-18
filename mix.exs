@@ -11,7 +11,10 @@ defmodule PlayEcto.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :ecto, :postgrex]]
+    [
+      applications: [:logger, :ecto, :postgrex],
+      mod: {PlayEcto, []}
+    ]
   end
 
   defp deps do

@@ -2,7 +2,7 @@ defmodule PlayEcto.User do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias PlayEcto.Post
+  alias PlayEcto.{Post, Profile}
 
   schema("users") do
     field :name,          :string
@@ -10,6 +10,7 @@ defmodule PlayEcto.User do
     field :password_hash, :string
 
     has_many :posts, Post
+    has_one :profile, Profile
 
     timestamps
   end
@@ -19,6 +20,7 @@ defmodule PlayEcto.User do
   def changeset(model, params) do
     model
     |> cast(params, @allowed)
+    |> cast_assoc(:profile)
     |> hash_password
     |> validate_required(:name)
     |> validate_required(:password_hash)

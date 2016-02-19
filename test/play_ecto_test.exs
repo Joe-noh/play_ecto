@@ -1,8 +1,9 @@
 defmodule PlayEctoTest do
   use ExUnit.Case
   import Ecto
+  import Ecto.Query, only: [from: 2]
 
-  alias PlayEcto.{User, Repo}
+  alias PlayEcto.{User, Profile, Repo}
 
   setup do
     Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -38,5 +39,25 @@ defmodule PlayEctoTest do
     # postのuserを取得
     user = assoc(post, :user) |> Repo.first
     assert user.name == "タナカ"
+  end
+
+  test "User has a profile" do
+    # 子関連も一緒に保存（もちろんinsertは2回）
+    params = %{
+      name: "タナカ",
+      password: "password",
+      profile: %{
+        self_introduction: "こういう者です。",
+        github_url: "https://github.com/Joe-noh"
+      }
+    }
+
+    %User{} |> User.changeset(params) |> Repo.insert!
+
+    # 子関連も一緒に取得
+    user = from(u in User, where: u.name == "タナカ", preload: :profile) |> Repo.first!
+
+    assert user.profile.self_introduction == "こういう者です。"
+    assert user.profile.github_url == "https://github.com/Joe-noh"
   end
 end

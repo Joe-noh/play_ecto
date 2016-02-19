@@ -2,10 +2,14 @@ defmodule PlayEcto.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias PlayEcto.Post
+
   schema("users") do
     field :name,          :string
     field :password,      :string, virtual: true
     field :password_hash, :string
+
+    has_many :posts, Post
 
     timestamps
   end
@@ -28,4 +32,9 @@ defmodule PlayEcto.User do
   end
 
   defp hashing(_password), do: "hogehogefugafuga"
+
+  def new_post(user, title, body) do
+    Ecto.build_assoc(user, :posts)
+    |> Post.changeset(%{title: title, body: body})
+  end
 end

@@ -2,13 +2,14 @@ defmodule PlayEcto.Post do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias PlayEcto.User
+  alias PlayEcto.{User, Tag}
 
   schema "posts" do
     field :title, :string
     field :body,  :string
 
     belongs_to :user, User
+    many_to_many :tags, Tag, join_through: "posts_tags"
 
     timestamps
   end

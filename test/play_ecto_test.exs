@@ -4,7 +4,7 @@ defmodule PlayEctoTest do
   import Ecto.Changeset
   import Ecto.Query, only: [from: 2]
 
-  alias PlayEcto.{User, Post, Profile, Repo}
+  alias PlayEcto.{User, Post, Profile, Tag, Repo}
 
   setup do
     Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -18,7 +18,12 @@ defmodule PlayEctoTest do
       }
     }
 
-    {:ok, params: params}
+    post_params = %{
+      title: "今日の日記",
+      body: "とても色々なことがありました。"
+    }
+
+    {:ok, params: params, post_params: post_params}
   end
 
   test "insert a user", %{params: params = %{name: name}} do
@@ -60,6 +65,37 @@ defmodule PlayEctoTest do
     user = from(u in User, where: u.name == ^name, preload: :profile) |> Repo.first!
 
     assert user.profile.self_introduction == "こんちわ"
+  end
+
+  test "post has many tags", %{params: user_params} do
+    user = %User{} |> User.changeset(user_params) |> Repo.insert!
+
+    post1 = build_assoc(user, :posts)
+      |> Post.changeset(%{title: "PhoenixとEctoでAPIサーバ", body: "Phoenixはいいぞ"})
+      |> Repo.insert!
+    post2 = build_assoc(user, :posts)
+      |> Post.changeset(%{title: "Ectoを試してみる", body: "Ectoはいいぞ"})
+      |> Repo.insert!
+
+    tag1 = %Tag{} |> Tag.changeset(%{name: "Phoenix"}) |> Repo.insert!
+    tag2 = %Tag{} |> Tag.changeset(%{name: "Ecto"})    |> Repo.insert!
+
+    post1 |> Repo.preload(:tags) |> Post.changeset(%{}) |> put_assoc(:tags, [tag1, tag2]) |> Repo.update!
+    post2 |> Repo.preload(:tags) |> Post.changeset(%{}) |> put_assoc(:tags, [tag2])       |> Repo.update!
+
+    post1_tags = assoc(post1, :tags) |> Repo.all
+    post2_tags = assoc(post2, :tags) |> Repo.all
+
+    assert post1_tags |> Enum.map(& &1.name) |> Enum.sort == ["Ecto", "Phoenix"]
+    assert post2_tags |> Enum.map(& &1.name) |> Enum.sort == ["Ecto"]
+
+    # 深い関連をpreload
+    user = Repo.first!(from u in User, where: u.name == ^user_params.name, preload: [posts: :tags])
+
+    [post | _] = user.posts
+    [tag  | _]  = post.tags
+
+    assert %Tag{} = tag
   end
 
   @allowed ~w[name password]

@@ -88,6 +88,14 @@ defmodule PlayEctoTest do
 
     assert post1_tags |> Enum.map(& &1.name) |> Enum.sort == ["Ecto", "Phoenix"]
     assert post2_tags |> Enum.map(& &1.name) |> Enum.sort == ["Ecto"]
+
+    # 深い関連をpreload
+    user = Repo.first!(from u in User, where: u.name == ^user_params.name, preload: [posts: :tags])
+
+    [post | _] = user.posts
+    [tag  | _]  = post.tags
+
+    assert %Tag{} = tag
   end
 
   @allowed ~w[name password]

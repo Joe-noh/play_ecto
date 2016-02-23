@@ -36,6 +36,21 @@ defmodule PlayEctoTest do
     assert user.password_hash |> is_binary
   end
 
+  test "insert some users at once" do
+    hash = "password_hash_hogehoge"
+    now = Ecto.DateTime.from_erl(:calendar.local_time)
+
+    users = [
+      %{name: "John", password_hash: hash, inserted_at: now, updated_at: now},
+      %{name: "Mary", password_hash: hash, inserted_at: now, updated_at: now},
+      %{name: "Alex", password_hash: hash, inserted_at: now, updated_at: now}
+    ]
+
+    Repo.insert_all(User, users)
+
+    assert from(u in User, select: count(u.id)) |> Repo.all |> List.first == 3
+  end
+
   test "user has many posts", %{params: params} do
     user = %User{} |> User.changeset(params) |> Repo.insert!
 

@@ -128,6 +128,32 @@ defmodule PlayEctoTest do
     assert Repo.all(from p in subquery(assoc(user, :posts)), select: count(p.id)) == [2]
   end
 
+  test "try Ecto.Multi" do
+    alias Ecto.Multi
+
+    user1 = %User{} |> User.changeset(%{name: "Jack", password: "password"})
+    user2 = %User{} |> User.changeset(%{name: "",     password: "password"})
+
+    multi = Multi.new
+      |> Multi.insert(:user1, user1)
+      |> Multi.insert(:user2, user2)
+
+    # 実行するとどうなるか見れる
+    operations = Multi.to_list(multi)
+    {:insert, changeset1, _opts} = operations[:user1]
+    {:insert, changeset2, _opts} = operations[:user2]
+
+    assert changeset1.changes |> is_map
+    assert changeset1.valid?
+    refute changeset2.valid?
+
+    # Transaction内で実行
+    multi |> Repo.transaction
+
+    # user2がエラーになるのでrollbackされる
+    assert User |> Repo.all |> length == 0
+  end
+
   @allowed ~w[name password]
 
   test "cast_assoc/3 with required: true", %{params: params} do

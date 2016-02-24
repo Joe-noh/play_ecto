@@ -2,7 +2,7 @@ defmodule PlayEctoTest do
   use ExUnit.Case
   import Ecto
   import Ecto.Changeset
-  import Ecto.Query, only: [from: 2]
+  import Ecto.Query, only: [from: 2, subquery: 1]
 
   alias PlayEcto.{User, Post, Profile, Tag, Repo}
 
@@ -111,6 +111,21 @@ defmodule PlayEctoTest do
     [tag  | _]  = post.tags
 
     assert %Tag{} = tag
+  end
+
+  test "inserting struct directly and subquery/1" do
+    Repo.insert! %User{
+      name: "ホンザワ",
+      password: "hogehoge",
+      posts: [
+        %Post{title: "PhoenixとEctoでAPIサーバ", body: "Phoenixはいいぞ"},
+        %Post{title: "Ectoを試してみる", body: "Ectoはいいぞ"}
+      ]
+    }
+
+    user = Repo.first!(User)
+
+    assert Repo.all(from p in subquery(assoc(user, :posts)), select: count(p.id)) == [2]
   end
 
   @allowed ~w[name password]

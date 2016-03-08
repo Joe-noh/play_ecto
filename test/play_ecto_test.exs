@@ -70,14 +70,14 @@ defmodule PlayEctoTest do
   test "user has a profile", %{params: params = %{name: name}} do
     %User{} |> User.changeset(params) |> Repo.insert!  # Profileも一緒にinsert
 
-    user = from(u in User, where: u.name == ^name, preload: :profile) |> Repo.first!
+    user = from(u in User, where: u.name == ^name, preload: :profile) |> Repo.one!
 
     assert user.profile.self_introduction == get_in(params, [:profile, :self_introduction])
     assert user.profile.github_url        == get_in(params, [:profile, :github_url])
 
     Profile.changeset(user.profile, %{self_introduction: "こんちわ"}) |> Repo.update!
 
-    user = from(u in User, where: u.name == ^name, preload: :profile) |> Repo.first!
+    user = from(u in User, where: u.name == ^name, preload: :profile) |> Repo.one!
 
     assert user.profile.self_introduction == "こんちわ"
   end
@@ -105,7 +105,7 @@ defmodule PlayEctoTest do
     assert post2_tags |> Enum.map(& &1.name) |> Enum.sort == ["Ecto"]
 
     # 深い関連をpreload
-    user = Repo.first!(from u in User, where: u.name == ^user_params.name, preload: [posts: :tags])
+    user = Repo.one!(from u in User, where: u.name == ^user_params.name, preload: [posts: :tags])
 
     [post | _] = user.posts
     [tag  | _]  = post.tags
@@ -123,7 +123,7 @@ defmodule PlayEctoTest do
       ]
     }
 
-    user = Repo.first!(User)
+    user = Repo.one!(User)
 
     assert Repo.all(from p in subquery(assoc(user, :posts)), select: count(p.id)) == [2]
   end

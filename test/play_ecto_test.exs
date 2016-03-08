@@ -2,7 +2,7 @@ defmodule PlayEctoTest do
   use ExUnit.Case
   import Ecto
   import Ecto.Changeset
-  import Ecto.Query, only: [from: 2]
+  import Ecto.Query, only: [from: 2, subquery: 1]
 
   alias PlayEcto.{User, Post, Profile, Tag, Repo}
 
@@ -36,6 +36,21 @@ defmodule PlayEctoTest do
     assert user.password_hash |> is_binary
   end
 
+  test "insert some users at once" do
+    hash = "password_hash_hogehoge"
+    now = Ecto.DateTime.from_erl(:calendar.local_time)
+
+    users = [
+      %{name: "John", password_hash: hash, inserted_at: now, updated_at: now},
+      %{name: "Mary", password_hash: hash, inserted_at: now, updated_at: now},
+      %{name: "Alex", password_hash: hash, inserted_at: now, updated_at: now}
+    ]
+
+    Repo.insert_all(User, users)
+
+    assert from(u in User, select: count(u.id)) |> Repo.all |> List.first == 3
+  end
+
   test "user has many posts", %{params: params} do
     user = %User{} |> User.changeset(params) |> Repo.insert!
 
@@ -55,14 +70,14 @@ defmodule PlayEctoTest do
   test "user has a profile", %{params: params = %{name: name}} do
     %User{} |> User.changeset(params) |> Repo.insert!  # Profileも一緒にinsert
 
-    user = from(u in User, where: u.name == ^name, preload: :profile) |> Repo.first!
+    user = from(u in User, where: u.name == ^name, preload: :profile) |> Repo.one!
 
     assert user.profile.self_introduction == get_in(params, [:profile, :self_introduction])
     assert user.profile.github_url        == get_in(params, [:profile, :github_url])
 
     Profile.changeset(user.profile, %{self_introduction: "こんちわ"}) |> Repo.update!
 
-    user = from(u in User, where: u.name == ^name, preload: :profile) |> Repo.first!
+    user = from(u in User, where: u.name == ^name, preload: :profile) |> Repo.one!
 
     assert user.profile.self_introduction == "こんちわ"
   end
@@ -90,12 +105,53 @@ defmodule PlayEctoTest do
     assert post2_tags |> Enum.map(& &1.name) |> Enum.sort == ["Ecto"]
 
     # 深い関連をpreload
-    user = Repo.first!(from u in User, where: u.name == ^user_params.name, preload: [posts: :tags])
+    user = Repo.one!(from u in User, where: u.name == ^user_params.name, preload: [posts: :tags])
 
     [post | _] = user.posts
     [tag  | _]  = post.tags
 
     assert %Tag{} = tag
+  end
+
+  test "inserting struct directly and subquery/1" do
+    Repo.insert! %User{
+      name: "ホンザワ",
+      password: "hogehoge",
+      posts: [
+        %Post{title: "PhoenixとEctoでAPIサーバ", body: "Phoenixはいいぞ"},
+        %Post{title: "Ectoを試してみる", body: "Ectoはいいぞ"}
+      ]
+    }
+
+    user = Repo.one!(User)
+
+    assert Repo.all(from p in subquery(assoc(user, :posts)), select: count(p.id)) == [2]
+  end
+
+  test "try Ecto.Multi" do
+    alias Ecto.Multi
+
+    user1 = %User{} |> User.changeset(%{name: "Jack", password: "password"})
+    user2 = %User{} |> User.changeset(%{name: "",     password: "password"})
+
+    multi = Multi.new
+      |> Multi.insert(:user1, user1)
+      |> Multi.insert(:user2, user2)
+
+    # 実行するとどうなるか見れる
+    operations = Multi.to_list(multi)
+    {:insert, changeset1, _opts} = operations[:user1]
+    {:insert, changeset2, _opts} = operations[:user2]
+
+    assert changeset1.changes |> is_map
+    assert changeset1.valid?
+    refute changeset2.valid?
+
+    # Transaction内で実行
+    multi |> Repo.transaction
+
+    # user2がエラーになるのでrollbackされる
+    assert User |> Repo.all |> length == 0
   end
 
   @allowed ~w[name password]

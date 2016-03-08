@@ -19,7 +19,7 @@ defmodule PlayEcto.Mixfile do
 
   defp deps do
     [
-      {:ecto, github: "elixir-lang/ecto", ref: "6464da626276073495a8dcb61d37b3baafcde834"},
+      {:ecto, "2.0.0-beta.2"},
       {:postgrex, ">= 0.0.0"}
     ]
   end
